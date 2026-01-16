@@ -1,0 +1,77 @@
+train_profiles:
+  yolo_v12n_e300:
+    model_family: yolo
+    base_model: yolov12n.pt
+    dataset_path: ./datasets/garbage_dataset
+    dataset_spec: bbox_json
+    output_dir: ./outputs/train/yolo_v12n_e300
+
+    hyperparameters:
+      epochs: 300
+      batch_size: 10
+      image_size: 640
+      optimizer: AdamW
+      lr0: 0.0005
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      patience: 15
+
+    export_targets:
+      - onnx
+      - rknn
+
+  yolo_v12s_large:
+    model_family: yolo
+    base_model: yolov12s.pt
+    dataset_path: ./datasets/garbage_dataset
+    dataset_spec: bbox_json
+    output_dir: ./outputs/train/yolo_v12s_large
+
+    hyperparameters:
+      preset: large_dataset
+      epochs: 150
+      batch_size: 32
+      image_size: 640
+      patience: 30
+
+    export_targets:
+      - onnx
+
+  fasterrcnn_mobilenet:
+    model_family: faster_rcnn
+    base_model: mobilenet_v3_large
+    dataset_path: ./datasets/garbage_dataset
+    dataset_spec: bbox_json
+    output_dir: ./outputs/train/fasterrcnn_mobilenet
+
+    hyperparameters:
+      num_epochs: 100
+      batch_size: 8
+      learning_rate: 0.005
+      momentum: 0.9
+      weight_decay: 0.0005
+      patience: 10
+      min_delta: 0.001
+
+    export_targets:
+      - torchscript
+      - onnx
+
+  fasterrcnn_resnet50:
+    model_family: faster_rcnn
+    base_model: resnet50_fpn
+    dataset_path: ./datasets/garbage_dataset
+    dataset_spec: bbox_json
+    output_dir: ./outputs/train/fasterrcnn_resnet50
+
+    hyperparameters:
+      num_epochs: 200
+      batch_size: 16
+      learning_rate: 0.005
+      patience: 10
+      preset: focus_accuracy
+
+    export_targets:
+      - onnx
+      - torchscript

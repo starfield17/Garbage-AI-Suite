@@ -1,0 +1,4 @@
+[tool.architect]
+source_dirs = ["src/garbage_shared"]
+root_dirs = ["src/garbage_train", "src/garbage_deploy", "src/garbage_autolabel"]
+ignore_patterns = ["tests/*", "**/test_*.py"]

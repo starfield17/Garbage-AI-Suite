@@ -1,0 +1,41 @@
+name: garbage-ai-suite
+version: 1.0.0
+description: AI-based garbage detection and classification suite
+
+modules:
+  - name: shared
+    path: ./shared
+    description: Shared utilities, config, and contracts
+
+  - name: train
+    path: ./train
+    description: Training module for YOLO, Fast R-CNN models
+
+  - name: deploy
+    path: ./deploy
+    description: Deployment module for real-time inference
+
+  - name: autolabel
+    path: ./autolabel
+    description: Auto-labeling module with multi-model support
+
+  - name: scripts
+    path: ./scripts
+    description: Utility scripts and tools
+
+environments:
+  - name: test
+    python_path: /home/saki/miniconda3/envs/test/bin/python
+    description: Test environment with /home/saki/miniconda3/envs/test/bin/python
+
+  - name: production
+    python_path: python3
+    description: Production environment
+
+config_paths:
+  registry: ./configs/registry
+  datasets: ./datasets
+  outputs: ./outputs
+  logs: ./logs
+
+default_environment: test

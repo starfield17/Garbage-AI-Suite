@@ -1,0 +1,24 @@
+name: DeployPipeline
+description: Real-time inference pipeline
+
+steps:
+  - name: load_config
+    handler: load_config
+    params:
+      config_path: ${config_path}
+
+  - name: initialize_components
+    handler: initialize_components
+    params:
+      deploy_profile: ${deploy_profile}
+      manifest_path: ${manifest_path}
+
+  - name: run_inference_loop
+    handler: run_inference_loop
+    params:
+      dry_run: ${dry_run}
+      debug_window: ${debug_window}
+
+  - name: cleanup
+    handler: cleanup
+    params: {}

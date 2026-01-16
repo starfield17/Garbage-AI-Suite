@@ -1,0 +1,89 @@
+deploy_profiles:
+  raspi_yolo_v12n:
+    runtime: torch
+    device_type: raspi
+    confidence_threshold: 0.9
+    iou_threshold: 0.45
+    max_detections: 10
+
+    stability:
+      min_position_frames: 5
+      min_confidence_frames: 3
+      cooldown_ms: 2000
+
+    camera:
+      device_index: 0
+      width: 640
+      height: 480
+      crop_enabled: true
+      crop_region: [0, 0, 640, 480]
+
+    serial:
+      enabled: true
+      port: /dev/ttyUSB0
+      baud: 115200
+      send_interval_ms: 100
+
+  x86_fast_rcnn:
+    runtime: torch
+    device_type: x86
+    confidence_threshold: 0.7
+    iou_threshold: 0.5
+    max_detections: 10
+
+    stability:
+      min_position_frames: 10
+      min_confidence_frames: 5
+      cooldown_ms: 1000
+
+    camera:
+      device_index: 0
+      width: 1280
+      height: 720
+      crop_enabled: false
+
+    serial:
+      enabled: true
+      port: /dev/ttyUSB0
+      baud: 115200
+
+  rk3588_yolo_onnx:
+    runtime: rknn
+    device_type: rk3588
+    confidence_threshold: 0.8
+    iou_threshold: 0.45
+    max_detections: 10
+
+    stability:
+      min_position_frames: 8
+      min_confidence_frames: 4
+      cooldown_ms: 1500
+
+    camera:
+      device_index: 0
+      width: 640
+      height: 480
+      crop_enabled: true
+
+    serial:
+      enabled: true
+      port: /dev/ttyS1
+      baud: 115200
+
+  test_mode:
+    runtime: torch
+    device_type: x86
+    confidence_threshold: 0.5
+    dry_run: true
+    debug_window: true
+
+    stability:
+      min_position_frames: 1
+      min_confidence_frames: 1
+      cooldown_ms: 100
+
+    camera:
+      enabled: false
+
+    serial:
+      enabled: false

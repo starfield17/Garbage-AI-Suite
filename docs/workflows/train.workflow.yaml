@@ -1,0 +1,30 @@
+name: TrainPipeline
+description: Training and export pipeline
+
+steps:
+  - name: load_config
+    handler: load_config
+    params:
+      config_path: ${config_path}
+
+  - name: prepare_dataset
+    handler: prepare_dataset
+    params:
+      dataset_path: ${dataset_path}
+
+  - name: train_model
+    handler: train_model
+    params:
+      model_type: ${model_type}
+
+  - name: export_model
+    handler: export_model
+    params:
+      export_format: ${export_format}
+
+  - name: generate_manifest
+    handler: generate_manifest
+    params:
+      model_path: ${model_path}
+      metrics: ${metrics}
+      export_results: ${export_results}

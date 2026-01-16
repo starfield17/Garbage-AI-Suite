@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Export Targets Configuration",
+  "description": "Configuration for model export targets and formats",
+  "type": "object",
+  "properties": {
+    "formats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": ["pytorch", "onnx", "torchscript", "rknn", "tensorrt"]
+          },
+          "enabled": {"type": "boolean"},
+          "opset_version": {"type": "integer"},
+          "half_precision": {"type": "boolean"},
+          "dynamic_axes": {"type": "boolean"}
+        },
+        "required": ["format", "enabled"]
+      }
+    },
+    "target_platforms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "platform": {"type": "string", "enum": ["x86", "raspi", "rk3588"]},
+          "formats": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        },
+        "required": ["platform"]
+      }
+    }
+  },
+  "required": ["formats"]
+}

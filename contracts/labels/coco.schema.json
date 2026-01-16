@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "COCO Dataset Format",
+  "description": "Common Objects in Context (COCO) annotation format",
+  "type": "object",
+  "properties": {
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "file_name": {"type": "string"},
+          "width": {"type": "integer"},
+          "height": {"type": "integer"}
+        },
+        "required": ["id", "file_name", "width", "height"]
+      }
+    },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "image_id": {"type": "integer"},
+          "category_id": {"type": "integer"},
+          "bbox": {
+            "type": "array",
+            "items": {"type": "number"},
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "area": {"type": "number"},
+          "iscrowd": {"type": "integer", "enum": [0, 1]}
+        },
+        "required": ["id", "image_id", "category_id", "bbox"]
+      }
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "name": {"type": "string"},
+          "supercategory": {"type": "string"}
+        },
+        "required": ["id", "name"]
+      }
+    }
+  },
+  "required": ["images", "annotations", "categories"]
+}
