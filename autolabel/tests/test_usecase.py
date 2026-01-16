@@ -57,13 +57,17 @@ def test_auto_label_success(
 
     with patch.object(use_case, "_get_adapter", return_value=mock_adapter):
         with patch.object(use_case, "_get_writer", return_value=mock_writer):
-            use_case.scanner = mock_scanner
-            result = use_case.execute(
-                config_path=tmp_path / "config.yaml",
-                model_type="yolo",
-                input_dir=tmp_path,
-                output_dir=tmp_path / "output",
-            )
+            with patch(
+                "garbage_autolabel.application.usecases.auto_label_dataset.map_class_names",
+                side_effect=lambda dets, cmap: dets,
+            ):
+                use_case.scanner = mock_scanner
+                result = use_case.execute(
+                    config_path=tmp_path / "config.yaml",
+                    model_type="yolo",
+                    input_dir=tmp_path,
+                    output_dir=tmp_path / "output",
+                )
 
     assert result["success"] is True
     assert mock_writer.write.call_count == 1
