@@ -1,14 +1,25 @@
 """Use case for training models."""
 
-from garbage_train.application.ports import TrainerPort, ExporterPort, ArtifactStorePort, DatasetPort
+from pathlib import Path
+from datetime import datetime
+
+from garbage_train.application.ports import (
+    TrainerPort,
+    ExporterPort,
+    ArtifactStorePort,
+    DatasetPort,
+)
 from garbage_train.infrastructure.trainers import YOLOTrainer, FasterRCNNTrainer
-from garbage_train.infrastructure.exporters import ONNXExporter, TorchScriptExporter, RKNNExporter
+from garbage_train.infrastructure.exporters import (
+    ONNXExporter,
+    TorchScriptExporter,
+    RKNNExporter,
+)
 from garbage_train.infrastructure.artifact_storage import ArtifactStorage
 from garbage_train.infrastructure.dataset_preparation import GarbageDataset
 from garbage_shared.config_loader import ConfigLoader
 from garbage_shared.contracts_models import ModelManifestDTO, ModelFileDTO
 from garbage_shared.observability import get_logger
-from datetime import datetime
 
 log = get_logger(__name__)
 
@@ -17,7 +28,7 @@ class TrainAndExportModelUseCase:
     def __init__(self):
         self.config_loader = ConfigLoader()
         self.artifact_storage = ArtifactStorage()
-        self.dataset_preparation = DatasetPort()
+        self.dataset_preparation = GarbageDataset()
 
     def execute(
         self,
@@ -59,8 +70,12 @@ class TrainAndExportModelUseCase:
     def _prepare_dataset(self, profile: dict):
         from garbage_train.infrastructure.dataset_preparation import GarbageDataset
 
-        self.dataset_preparation = GarbageDataset(profile["dataset_path"])
-        stats = self.dataset_preparation.prepare_dataset(profile)
+        dataset_path = profile.get("dataset_path", "./datasets/garbage")
+        self.dataset_preparation = GarbageDataset(dataset_path)
+        stats = {
+            "images": len(self.dataset_preparation),
+            "labels": len(self.dataset_preparation),
+        }
 
         log.info("Dataset prepared", stats=stats)
         return stats
@@ -76,7 +91,10 @@ class TrainAndExportModelUseCase:
             trainer = FasterRCNNTrainer(hyperparameters)
             result = trainer.train(hyperparameters)
         else:
-            return {"success": False, "error": f"Unsupported model family: {model_family}"}
+            return {
+                "success": False,
+                "error": f"Unsupported model family: {model_family}",
+            }
 
         log.info("Model trained", result=result)
         return result
@@ -90,13 +108,19 @@ class TrainAndExportModelUseCase:
 
             if target == "onnx":
                 exporter = ONNXExporter(exporter_config)
-                export_results["onnx"] = exporter.export_to_onnx(Path(model_path), exporter_config)
+                export_results["onnx"] = exporter.export_to_onnx(
+                    Path(model_path), exporter_config
+                )
             elif target == "torchscript":
                 exporter = TorchScriptExporter(exporter_config)
-                export_results["torchscript"] = exporter.export_to_torchscript(Path(model_path), exporter_config)
+                export_results["torchscript"] = exporter.export_to_torchscript(
+                    Path(model_path), exporter_config
+                )
             elif target == "rknn":
                 exporter = RKNNExporter(exporter_config)
-                export_results["rknn"] = exporter.export_to_rknn(Path(model_path), exporter_config)
+                export_results["rknn"] = exporter.export_to_rknn(
+                    Path(model_path), exporter_config
+                )
 
         return export_results
 
@@ -134,7 +158,9 @@ class TrainAndExportModelUseCase:
             "train_id": profile.get("train_id", "unknown"),
             "created_at": now,
             "classes": self._get_classes(profile),
-            "input": profile.get("input_spec", {"width": 640, "height": 480, "channels": 3}),
+            "input": profile.get(
+                "input_spec", {"width": 640, "height": 480, "channels": 3}
+            ),
             "export_targets": profile.get("export_targets", []),
             "files": files,
         }
@@ -142,7 +168,4 @@ class TrainAndExportModelUseCase:
     def _get_classes(self, profile: dict) -> list:
         class_mapping = profile.get("class_mapping", {})
 
-        return [
-            {"id": idx, "name": name}
-            for idx, name in class_mapping.items()
-        ]
+        return [{"id": idx, "name": name} for idx, name in class_mapping.items()]

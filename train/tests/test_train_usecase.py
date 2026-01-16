@@ -1,39 +1,21 @@
 """Tests for train module."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
+from pathlib import Path
 
 import pytest
 
 from garbage_train.application.usecases import TrainAndExportModelUseCase
-from garbage_shared.contracts_models import ModelManifestDTO
 
 
 @pytest.fixture
-def use_case():
-    return TrainAndExportModelUseCase()
+def mock_config_loader():
+    loader = Mock()
+    return loader
 
 
 @pytest.fixture
-def mock_trainer():
-    trainer = Mock()
-    trainer.train.return_value = {
-        "success": True,
-        "metrics": {"map50": 0.85},
-        "model_path": "/fake/path/to/model.pt",
-    }
-    return trainer
-
-
-@pytest.fixture
-def mock_exporter():
-    exporter = Mock()
-    exporter.export_to_onnx.return_value = {"success": True, "output_path": "/fake/path/to/model.onnx"}
-    exporter.export_to_torchscript.return_value = {"success": True, "output_path": "/fake/path/to/model.torchscript"}
-    return exporter
-
-
-@pytest.fixture
-def mock_storage():
+def mock_artifact_storage():
     storage = Mock()
     storage.save.return_value = "/fake/path/to/manifest.json"
     return storage
@@ -46,44 +28,79 @@ def mock_dataset():
     return dataset
 
 
-def test_train_success(use_case, mock_trainer, mock_exporter, mock_storage, mock_dataset, tmp_path):
-    use_case.config_loader.load_yaml.return_value = {
+@pytest.fixture
+def use_case(mock_config_loader, mock_artifact_storage, mock_dataset):
+    use_case = TrainAndExportModelUseCase.__new__(TrainAndExportModelUseCase)
+    use_case.config_loader = mock_config_loader
+    use_case.artifact_storage = mock_artifact_storage
+    use_case.dataset_preparation = mock_dataset
+    return use_case
+
+
+def test_train_success(use_case):
+    """Test successful training execution path."""
+    mock_config = {
         "train_profiles": {
             "yolo_v12n_e300": {
                 "model_family": "yolo",
-                "dataset_path": tmp_path,
+                "dataset_path": "/fake/path",
                 "hyperparameters": {"epochs": 10},
                 "export_targets": ["onnx"],
                 "class_mapping": {"0": "Kitchen_waste"},
+                "input_spec": {"width": 640, "height": 480, "channels": 3},
             }
         }
     }
+    use_case.config_loader.load_yaml.return_value = mock_config
 
-    (tmp_path / "configs").mkdir()
-    (tmp_path / "registry").mkdir()
-    (tmp_path / "registry" / "train_profiles.yaml").write_text(
-        "train_profiles:\n  yolo_v12n_e300:\n    model_family: yolo\n"
-    )
+    # Mock the internal methods to avoid actual training
+    mock_train_result = {
+        "success": True,
+        "metrics": {"map50": 0.85},
+        "model_path": "/fake/path/to/model.pt",
+    }
+    mock_export_result = {"onnx": {"success": True, "output_path": "/fake/model.onnx"}}
+    mock_manifest = {
+        "model_name": "test_model",
+        "model_family": "yolo",
+        "train_id": "yolo_v12n_e300",
+        "classes": [{"id": 0, "name": "Kitchen_waste"}],
+        "input": {"width": 640, "height": 480, "channels": 3},
+        "export_targets": ["onnx"],
+        "files": [],
+    }
 
-    with patch.object(use_case, "_prepare_dataset", return_value=mock_dataset):
-        with patch.object(use_case, "_train_model", return_value=mock_trainer):
-            with patch.object(use_case, "_export_model", return_value=mock_exporter):
-                with patch.object(use_case, "_generate_manifest"):
+    with patch.object(use_case, "_prepare_dataset", return_value={"images": 100}):
+        with patch.object(use_case, "_train_model", return_value=mock_train_result):
+            with patch.object(
+                use_case, "_export_model", return_value=mock_export_result
+            ):
+                with patch.object(
+                    use_case, "_generate_manifest", return_value=mock_manifest
+                ):
                     result = use_case.execute(
                         train_id="yolo_v12n_e300",
-                        output_dir=str(tmp_path / "output"),
+                        output_dir="/fake/output",
                     )
 
     assert result["success"] is True
     assert "manifest_path" in result
 
 
-def test_train_failure(use_case, tmp_path):
-    (tmp_path / "configs").mkdir()
-    (tmp_path / "registry").mkdir()
-    (tmp_path / "registry" / "train_profiles.yaml").write_text("train_profiles:\n  invalid:\n")
+def test_train_failure_invalid_profile(use_case):
+    """Test failure when train_id doesn't exist in config."""
+    use_case.config_loader.load_yaml.return_value = {"train_profiles": {}}
 
-    result = use_case.execute(train_id="invalid", output_dir=str(tmp_path / "output"))
+    result = use_case.execute(train_id="invalid", output_dir="/fake/output")
 
     assert result["success"] is False
     assert "invalid" in result.get("error", "").lower()
+
+
+def test_train_failure_config_error(use_case):
+    """Test failure when config loading fails."""
+    use_case.config_loader.load_yaml.side_effect = Exception("Config file not found")
+
+    result = use_case.execute(train_id="test", output_dir="/fake/output")
+
+    assert result["success"] is False

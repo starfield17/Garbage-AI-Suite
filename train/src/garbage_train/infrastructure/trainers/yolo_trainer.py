@@ -5,7 +5,6 @@ from typing import Dict
 import torch
 from ultralytics import YOLO
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
-from torchvision.models.detection.faster_rcnn import FastRCNN_ResNet50_FPN_Weights
 
 from garbage_train.application.ports import TrainerPort
 from garbage_shared.observability import get_logger
@@ -128,7 +127,7 @@ class FasterRCNNTrainer(TrainerPort):
             for epoch in range(num_epochs):
                 if progress_callback:
                     progress_callback(
-                        f"Epoch {epoch+1}/{num_epochs}",
+                        f"Epoch {epoch + 1}/{num_epochs}",
                         f"Training...",
                     )
 
@@ -207,7 +206,9 @@ class FasterRCNNTrainer(TrainerPort):
         return val_loss / len(self._dataloader())
 
     def _save_checkpoint(self, epoch, is_best=False):
-        checkpoint_name = "model_best.pth" if is_best else f"checkpoint_epoch_{epoch}.pth"
+        checkpoint_name = (
+            "model_best.pth" if is_best else f"checkpoint_epoch_{epoch}.pth"
+        )
         checkpoint_path = self.output_dir / checkpoint_name
 
         torch.save(

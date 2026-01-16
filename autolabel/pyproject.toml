@@ -1,3 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "garbage-autolabel"
+version = "0.1.0"
+description = "Auto-labeling module for Garbage-AI-Suite"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Garbage-AI-Suite Team"}
+]
+dependencies = [
+    "garbage-shared",
+    "torch>=2.0",
+    "torchvision",
+    "ultralytics>=8.0",
+    "opencv-python>=4.8",
+    "openai>=1.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+garbage-autolabel = "garbage_autolabel.entry.__main__:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "mypy",
+    "ruff",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["garbage_autolabel*"]
+
 [tool.architect]
 source_dirs = ["src/garbage_shared"]
 root_dirs = ["src/garbage_train", "src/garbage_deploy", "src/garbage_autolabel"]

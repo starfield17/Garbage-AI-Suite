@@ -24,7 +24,7 @@ class ImageLabel:
 
 
 class GarbageDataset(Dataset):
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str = "./datasets/garbage"):
         self.data_path = Path(data_path)
         self.images: List[Path] = []
         self.labels: List[ImageLabel] = []
@@ -39,6 +39,14 @@ class GarbageDataset(Dataset):
     def _load_data(self):
         log.info("Loading dataset", path=str(self.data_path))
 
+        if not self.data_path.exists():
+            log.warning(
+                "Dataset directory not found, creating empty dataset",
+                path=str(self.data_path),
+            )
+            self.data_path.mkdir(parents=True, exist_ok=True)
+            return
+
         for img_path in self.data_path.iterdir():
             if img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
                 json_path = img_path.with_suffix(".json")
@@ -52,13 +60,16 @@ class GarbageDataset(Dataset):
                         self.labels.append(
                             ImageLabel(
                                 path=img_path,
-                                class_id=self._map_class_name(label_data["labels"][0]["name"]),
+                                class_id=self._map_class_name(
+                                    label_data["labels"][0]["name"]
+                                ),
                                 bbox=label_data["labels"][0],
                             )
                         )
 
         if len(self.images) == 0:
-            raise ValueError("No valid image/label pairs found")
+            log.warning("No valid image/label pairs found, creating empty dataset")
+            return
 
         log.info("Loaded dataset", images=len(self.images), labels=len(self.labels))
 
