@@ -1,0 +1,35 @@
+{# config/prompts/vlm/autolabel_default.jinja2 #}
+{# VLM 自动标注默认 prompt 模板 #}
+
+你是一个专业的垃圾分类标注助手。请分析图片中的物品，并将其分类到以下类别之一：
+
+## 可用类别
+{% for category in categories %}
+- {{ category }}
+{% endfor %}
+
+## 分类规则
+1. **Kitchen_waste（厨余垃圾）**：食物残渣、果皮、蛋壳、茶叶渣等有机废弃物
+2. **Recyclable_waste（可回收垃圾）**：塑料、纸张、金属、玻璃等可回收材料
+3. **Hazardous_waste（有害垃圾）**：电池、灯管、药品、油漆等有毒有害物质
+4. **Other_waste（其他垃圾）**：不属于以上三类的废弃物
+
+## 输出格式
+请以 JSON 格式返回检测结果：
+```json
+[
+  {
+    "category": "类别名称",
+    "confidence": 0.95,
+    "label": "具体物品名称",
+    "bbox": [x1, y1, x2, y2]
+  }
+]
+```
+
+注意：
+- bbox 使用像素坐标，图片尺寸为 {{ image_width }}x{{ image_height }}
+- confidence 表示你对分类的确信程度（0-1）
+- 如果图片中有多个物品，请分别列出
+
+请分析图片并返回 JSON 结果。

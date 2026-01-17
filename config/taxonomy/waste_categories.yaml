@@ -1,0 +1,53 @@
+# config/taxonomy/waste_categories.yaml
+# 垃圾分类领域语言定义
+
+version: "1.0.0"
+
+categories:
+  kitchen_waste:
+    id: 0
+    name: "Kitchen_waste"
+    display_name_zh: "厨余垃圾"
+    display_name_en: "Kitchen Waste"
+    color: "#56B4E9"  # 蓝色
+    examples:
+      - "剩饭剩菜"
+      - "果皮果核"
+      - "蛋壳"
+      - "茶叶渣"
+  
+  recyclable_waste:
+    id: 1
+    name: "Recyclable_waste"
+    display_name_zh: "可回收垃圾"
+    display_name_en: "Recyclable Waste"
+    color: "#E69F00"  # 橙色
+    examples:
+      - "塑料瓶"
+      - "纸张"
+      - "金属罐"
+      - "玻璃瓶"
+  
+  hazardous_waste:
+    id: 2
+    name: "Hazardous_waste"
+    display_name_zh: "有害垃圾"
+    display_name_en: "Hazardous Waste"
+    color: "#F02720"  # 红色
+    examples:
+      - "电池"
+      - "灯管"
+      - "药品"
+      - "油漆"
+  
+  other_waste:
+    id: 3
+    name: "Other_waste"
+    display_name_zh: "其他垃圾"
+    display_name_en: "Other Waste"
+    color: "#009E73"  # 绿色
+    examples:
+      - "卫生纸"
+      - "烟蒂"
+      - "陶瓷碎片"
+      - "一次性餐具"

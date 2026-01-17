@@ -1,0 +1,42 @@
+# ==============================================================================
+# Docker Compose - Development Environment
+# ==============================================================================
+
+services:
+  train:
+    build:
+      context: ..
+      dockerfile: docker/train.Dockerfile
+    volumes:
+      - ../models:/data/models
+      - ../datasets:/data/datasets
+      - ../configs:/data/configs
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    working_dir: /data
+
+  deploy:
+    build:
+      context: ..
+      dockerfile: docker/deploy.Dockerfile
+    volumes:
+      - ../models:/data/models
+      - ../configs:/data/configs
+    ports:
+      - "8000:8000"
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    working_dir: /data
+
+  autolabel:
+    build:
+      context: ..
+      dockerfile: docker/autolabel.Dockerfile
+    volumes:
+      - ../images:/data/images
+      - ../labels:/data/labels
+      - ../models:/data/models
+      - ../configs:/data/configs
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    working_dir: /data

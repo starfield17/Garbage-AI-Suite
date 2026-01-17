@@ -1,0 +1,53 @@
+# config/profiles/device_rk3588.yaml
+# RK3588 设备配置
+
+device:
+  name: "RK3588"
+  type: "embedded"
+
+# 摄像头配置
+camera:
+  index: 0  # 或 "/dev/video0"
+  width: 1280
+  height: 720
+  fps: 30
+  format: "MJPG"
+
+# 串口配置
+serial:
+  port: "/dev/ttyUSB0"
+  baudrate: 115200
+  timeout: 0.1
+  write_timeout: 0.1
+
+# NPU 配置
+npu:
+  enabled: true
+  cores: 3  # RK3588 有 3 个 NPU 核心
+  performance_mode: "high"
+
+# 推理配置
+inference:
+  runtime: "rknn"  # rknn / onnx / pytorch
+  model_format: "rknn"
+  input_size: [640, 640]
+  batch_size: 1
+
+# 显示配置
+display:
+  enabled: false  # 嵌入式设备通常无显示
+  debug_window: false
+
+# 稳定性配置
+stability:
+  threshold_seconds: 1.0
+  reset_timeout_seconds: 0.5
+
+# 冷却配置
+cooldown:
+  duration_seconds: 5.0
+
+# 性能配置
+performance:
+  inference_interval_ms: 100  # 推理间隔
+  max_queue_size: 50

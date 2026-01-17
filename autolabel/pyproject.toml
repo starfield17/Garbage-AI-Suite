@@ -1,43 +1,24 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "garbage-autolabel"
-version = "0.1.0"
-description = "Auto-labeling module for Garbage-AI-Suite"
-readme = "README.md"
+name = "autolabel-context"
+version = "2.0.0"
+description = "AutoLabel Context - Automatic image labeling with YOLO, Faster R-CNN, and VLM engines"
 requires-python = ">=3.10"
-license = {text = "MIT"}
-authors = [
-    {name = "Garbage-AI-Suite Team"}
-]
 dependencies = [
-    "garbage-shared",
-    "torch>=2.0",
-    "torchvision",
+    "shared-kernel",
     "ultralytics>=8.0",
     "opencv-python>=4.8",
     "openai>=1.0",
-    "pyyaml>=6.0",
+    "tqdm>=4.0",
+    "torch>=2.0",
+    "torchvision>=0.15",
 ]
 
 [project.scripts]
-garbage-autolabel = "garbage_autolabel.entry.__main__:main"
+autolabel = "autolabel_context.api.cli.main:main"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov",
-    "mypy",
-    "ruff",
-]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["garbage_autolabel*"]
-
-[tool.architect]
-source_dirs = ["src/garbage_shared"]
-root_dirs = ["src/garbage_train", "src/garbage_deploy", "src/garbage_autolabel"]
-ignore_patterns = ["tests/*", "**/test_*.py"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/autolabel_context"]

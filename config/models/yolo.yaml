@@ -1,0 +1,15 @@
+# config/models/yolo.yaml
+# YOLO 模型配置
+
+model_path: "models/yolo/best.pt"
+confidence_threshold: 0.5
+iou_threshold: 0.45
+device: "auto"  # auto/cpu/cuda:0
+imgsz: 640
+
+# 类别映射（可选，覆盖全局映射）
+class_mapping:
+  0: "Kitchen_waste"
+  1: "Recyclable_waste"
+  2: "Hazardous_waste"
+  3: "Other_waste"

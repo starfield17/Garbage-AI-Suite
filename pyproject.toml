@@ -1,4 +1,12 @@
-[tool.architecture_checker]
-source_dirs = ["src/garbage_shared"]
-root_dirs = ["src/garbage_train", "src/garbage_deploy", "src/garbage_autolabel"]
-ignore_patterns = ["tests/*", "**/test_*.py"]
+[project]
+name = "garbage-ai"
+version = "2.0.0"
+description = "AI-based garbage detection and classification system"
+requires-python = ">=3.10"
+
+[tool.uv.workspace]
+members = ["shared"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

@@ -1,364 +1,502 @@
-# Architecture Document
+# 系统架构文档
 
-This document describes the architecture principles, constraints, and design patterns used in Garbage-AI-Suite.
+本文档详细描述了 Garbage AI 系统的架构设计，包括 DDD 分层、模块划分、交互模式等。
 
-## 1. Core Principles
+## 目录
 
-### 1.1 Contracts-First Development
+- [架构概览](#架构概览)
+- [领域驱动设计](#领域驱动设计)
+- [上下文划分](#上下文划分)
+- [模块详解](#模块详解)
+- [基础设施](#基础设施)
+- [配置管理](#配置管理)
+- [部署架构](#部署架构)
 
-All data formats that cross module boundaries must be defined as JSON Schema contracts before implementation. This ensures:
+## 架构概览
 
-- **Interoperability**: Modules can evolve independently as long as contracts are respected
-- **Documentation**: Contracts serve as living documentation for data structures
-- **Validation**: Runtime validation against schemas catches integration errors early
-
-**Contract Locations**:
-- `contracts/labels/`: Label format schemas (COCO, YOLO, bbox)
-- `contracts/artifacts/`: Model artifact schemas (manifest, export targets)
-- `contracts/io/`: Inference I/O schemas (request, response)
-
-### 1.2 Unidirectional Dependency
-
-The architecture follows a strict unidirectional dependency flow:
+### 整体架构
 
 ```
-Entry → Application → Domain → Infrastructure
+┌────────────────────────────────────────────────────────────────────────────┐
+│                           Garbage AI System                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                         API / CLI Layer                               │  │
+│  │            (autolabel, train, deploy 命令行入口)                       │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                      │
+│  ┌──────────────────────────────────▼──────────────────────────────────┐  │
+│  │                        Application Layer                              │  │
+│  │        (用例编排、服务编排、DTO 转换、事件处理)                          │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                      │
+│  ┌──────────────────────────────────▼──────────────────────────────────┐  │
+│  │                           Domain Layer                                │  │
+│  │         (聚合根、实体、值对象、领域服务、领域事件)                         │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                      │
+│  ┌──────────────────────────────────▼──────────────────────────────────┐  │
+│  │                      Infrastructure Layer                             │  │
+│  │         (持久化、外部服务、消息队列、文件系统、串口通信)                    │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                         Shared Kernel                                  │  │
+│  │         (公共领域模型、类型定义、配置加载工具)                             │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Rules**:
-- Entry points (CLI) depend on Application
-- Application contains use cases and defines ports
-- Domain contains pure business logic (atoms)
-- Infrastructure implements Application ports
-- **NO backward dependencies**: Infrastructure cannot import Application or Entry
+### 技术栈
 
-### 1.3 Port-Based Architecture
+- **语言**: Python 3.10+
+- **框架**: 纯 Python，无重型框架依赖
+- **ML 框架**: Ultralytics YOLO, PyTorch, TorchVision
+- **配置**: YAML + Pydantic
+- **测试**: pytest
+- **部署**: Docker
 
-Each module (train, deploy, autolabel) defines abstract ports that infrastructure adapters implement:
+## 领域驱动设计
 
-| Module | Port | Implementations |
-|--------|------|-----------------|
-| train | TrainerPort | YOLOTrainer, FasterRCNNTrainer |
-| train | ExporterPort | ONNXExporter, TorchScriptExporter, RKNNExporter |
-| deploy | RuntimePort | TorchRuntimeAdapter, RKNNRuntimeAdapter |
-| deploy | CameraPort | OpenCVCameraAdapter |
-| deploy | SerialPort | PySerialAdapter |
-| autolabel | ModelAdapterPort | YOLOAdapter, FasterRCNNAdapter, QwenVLAdapter |
-| autolabel | LabelWriterPort | BBoxWriter, COCOWriter, YOLOWriter |
+### DDD 核心概念
 
-### 1.4 Configuration-Driven
+#### 聚合根 (Aggregate Root)
 
-All runtime behavior is driven by configuration files, not hardcoded paths or logic:
-
-- **Registry Configs**: `configs/registry/{train,deploy,mapping,class}_profiles.yaml`
-- **Profile IDs**: CLI commands use `--train-id`, `--deploy-id` to reference profiles
-- **No Hardcoded Paths**: Profiles define all paths, devices, and thresholds
-
-## 2. Module Structure
-
-### 2.1 Train Module
-
-```
-train/
-├── pyproject.toml          # Package configuration
-├── README.md               # Module documentation
-├── src/garbage_train/
-│   ├── entry/              # CLI entry point
-│   │   └── __main__.py     # Command-line interface
-│   ├── application/        # Use cases and port definitions
-│   │   ├── ports/          # Abstract interfaces (TrainerPort, ExporterPort)
-│   │   └── usecases/       # Business workflow orchestration
-│   ├── domain/             # Pure business logic (TODO: add domain atoms)
-│   └── infrastructure/     # Adapter implementations
-│       ├── trainers/       # YOLO, Faster R-CNN trainers
-│       ├── exporters/      # ONNX, TorchScript, RKNN exporters
-│       ├── dataset_preparation/
-│       └── artifact_storage/
-└── tests/                  # Unit and integration tests
-```
-
-### 2.2 Deploy Module
-
-```
-deploy/
-├── pyproject.toml          # Package configuration
-├── README.md               # Module documentation
-├── src/garbage_deploy/
-│   ├── entry/              # CLI entry point
-│   │   └── __main__.py     # Command-line interface
-│   ├── application/        # Use cases and port definitions
-│   │   └── usecases/       # Inference workflow orchestration
-│   ├── domain/             # Pure business logic
-│   │   └── atoms/          # DetectionState, stability checking
-│   └── infrastructure/     # Adapter implementations
-│       ├── runtime_adapters/  # Model runtime (Torch, RKNN)
-│       └── io/             # Camera, Serial, Clock adapters
-└── tests/                  # Unit and integration tests
-```
-
-### 2.3 AutoLabel Module
-
-```
-autolabel/
-├── pyproject.toml          # Package configuration
-├── README.md               # Module documentation
-├── src/garbage_autolabel/
-│   ├── entry/              # CLI entry point
-│   │   └── __main__.py     # Command-line interface
-│   ├── application/        # Use cases and port definitions
-│   │   └── usecases/       # Auto-labeling workflow
-│   ├── domain/             # Pure business logic
-│   │   └── atoms/          # filter_by_confidence, clip_bbox, NMS
-│   └── infrastructure/     # Adapter implementations
-│       ├── model_adapters/ # YOLO, Faster R-CNN, Qwen-VL
-│       ├── label_formats/  # BBox, COCO, YOLO writers
-│       └── storage/        # Dataset scanning
-└── tests/                  # Unit and integration tests
-```
-
-### 2.4 Shared Module
-
-```
-shared/
-├── pyproject.toml          # Package configuration
-├── README.md               # Module documentation
-└── src/garbage_shared/
-    ├── config_loader/      # YAML configuration loading
-    ├── workflow_engine/    # Workflow orchestration
-    ├── observability/      # Structured logging with correlation IDs
-    ├── contracts_models/   # Pydantic DTOs for contracts
-    └── utils/              # Helper utilities
-```
-
-## 3. Data Flow
-
-### 3.1 Training Flow
-
-```
-1. User: garbage-train run --train-id <id> --out <dir>
-2. Entry: Parse CLI arguments
-3. Application: Load train profile, orchestrate workflow
-4. Infrastructure: Train model, export to targets
-5. Infrastructure: Generate model_manifest.json
-6. Application: Save manifest to output directory
-```
-
-### 3.2 Deployment Flow
-
-```
-1. User: garbage-deploy run --deploy-id <id> --manifest <path>
-2. Entry: Parse CLI arguments
-3. Application: Load deploy profile and manifest
-4. Infrastructure: Initialize camera, serial, runtime
-5. Domain: Check detection stability
-6. Application: Run inference loop
-7. Infrastructure: Send results via serial
-```
-
-### 3.3 AutoLabel Flow
-
-```
-1. User: garbage-autolabel run --model <type> --input <dir> --out <dir>
-2. Entry: Parse CLI arguments
-3. Application: Load config, scan dataset
-4. Infrastructure: Load model adapter
-5. Domain: Filter by confidence, clip bboxes, NMS
-6. Infrastructure: Write labels in requested format
-```
-
-## 4. Configuration Files
-
-### 4.1 Train Profiles (`configs/registry/train_profiles.yaml`)
-
-```yaml
-train_profiles:
-  yolo_v12n_e300:
-    model_family: yolo
-    base_model: yolov12n.pt
-    hyperparameters:
-      epochs: 300
-      batch_size: 10
-    export_targets:
-      - onnx
-      - rknn
-```
-
-### 4.2 Deploy Profiles (`configs/registry/deploy_profiles.yaml`)
-
-```yaml
-deploy_profiles:
-  raspi_yolo_v12n:
-    runtime: torch
-    device_type: raspi
-    confidence_threshold: 0.9
-    stability:
-      min_position_frames: 5
-      cooldown_ms: 2000
-```
-
-### 4.3 Mapping (`configs/registry/mapping.yaml`)
-
-```yaml
-links:
-  - train_id: yolo_v12n_e300
-    deploy_id: raspi_yolo_v12n
-```
-
-### 4.4 Class Map (`configs/registry/class_map.yaml`)
-
-```yaml
-classes:
-  - id: 0
-    name: Kitchen_waste
-    aliases: [厨余垃圾, food_waste]
-  - id: 1
-    name: Recyclable_waste
-    aliases: [可回收物, recycling]
-```
-
-## 5. Contracts
-
-### 5.1 Model Manifest (`contracts/artifacts/model_manifest.schema.json`)
-
-The model manifest is the **handshake mechanism** between train → deploy/autolabel:
-
-```json
-{
-  "model_name": "yolov12n_garbage_model",
-  "model_family": "yolo",
-  "train_id": "yolo_v12n_e300",
-  "classes": [
-    {"id": 0, "name": "Kitchen_waste"}
-  ],
-  "input": {"width": 640, "height": 480, "channels": 3},
-  "export_targets": ["onnx", "rknn"]
-}
-```
-
-### 5.2 Inference Response (`contracts/io/inference_response.schema.json`)
-
-```json
-{
-  "success": true,
-  "detections": [
-    {
-      "class_id": 0,
-      "class_name": "bottle",
-      "bbox": {"x1": 100, "y1": 50, "x2": 200, "y2": 150},
-      "confidence": 0.95
-    }
-  ],
-  "inference_time_ms": 15.5
-}
-```
-
-## 6. Domain Atoms
-
-Domain atoms are pure functions implementing core business logic:
-
-### 6.1 Deploy Domain Atoms
+聚合根是领域模型的核心，每个聚合根维护其内部实体的一致性。
 
 ```python
-# Stability checking
-check_detection_stability(state, detected_type, now, min_position_frames)
-can_count_new_garbage(state, detected_type, now, cooldown_ms)
-
-# Serial payload mapping
-map_serial_payload(detection, image_w, image_h, max_value)
+class AutoLabelJob(AggregateRoot):
+    """自动标注任务聚合根"""
+    
+    def __init__(self, job_id, engine_type, image_items, confidence_threshold):
+        self._job_id = job_id
+        self._engine_type = engine_type
+        self._image_items = image_items  # 子实体
+        self._status = JobStatus.PENDING
+        self._results: List[LabelResult] = []
+        self._statistics = JobStatistics(total_images=len(image_items))
 ```
 
-### 6.2 AutoLabel Domain Atoms
+#### 实体 (Entity)
+
+实体具有唯一标识，包含业务行为。
 
 ```python
-# Detection processing
-filter_by_confidence(detections, threshold)
-clip_bbox_to_image(detections, width, height)
-map_class_names(detections, class_map)
-nms(detections, iou_threshold)
+class ImageItem(Entity):
+    """图片项实体"""
+    
+    def __init__(self, path: str):
+        self._path = path
+        self._is_processed = False
+        self._processing_error = None
+    
+    def mark_processed(self):
+        self._is_processed = True
+    
+    def mark_failed(self, error: str):
+        self._is_processed = True
+        self._processing_error = error
 ```
 
-## 7. Workflows
+#### 值对象 (Value Object)
 
-Workflows define explicit orchestration steps:
+值对象是不可变的，用于描述领域概念的属性。
 
-- `docs/workflows/train.workflow.yaml`: prepare → train → eval → export → manifest
-- `docs/workflows/deploy.workflow.yaml`: resolve_artifact → load → warmup → infer → post → report
-- `docs/workflows/autolabel.workflow.yaml`: load_models → run → fuse/fallback → sample → export_labels
-
-## 8. Scripts
-
-Scripts are **NOT** allowed to contain core business logic. They only perform:
-
-- System operations (service management, environment setup)
-- Utility conversions (JSON transformation, mapping)
-- Device-specific scripts (NPU config, UART management)
-
-See `scripts/README.md` for detailed script documentation.
-
-## 9. Import Boundaries
-
-### 9.1 Allowed Imports
-
-| From | To | Allowed |
-|------|-----|---------|
-| entry | application | ✅ Yes |
-| application | domain | ✅ Yes |
-| application | infrastructure | ✅ Yes (via ports) |
-| domain | infrastructure | ❌ No |
-| any module | shared | ✅ Yes |
-
-### 9.2 Cross-Module Imports
-
-```
-train → deploy: ❌ No
-deploy → train: ❌ No
-autolabel → train: ❌ No
-train/autolabel/deploy → shared: ✅ Yes
+```python
+@dataclass(frozen=True)
+class BoundingBox:
+    """边界框值对象"""
+    x_center: float
+    y_center: float
+    width: float
+    height: float
+    
+    def to_xyxy(self, img_width: int, img_height: int):
+        """转换为 XYXY 格式"""
+        x1 = int((self.x_center - self.width / 2) * img_width)
+        y1 = int((self.y_center - self.height / 2) * img_height)
+        x2 = int((self.x_center + self.width / 2) * img_width)
+        y2 = int((self.y_center + self.height / 2) * img_height)
+        return x1, y1, x2, y2
 ```
 
-The only handshake between modules is through `model_manifest.json` files and configuration profiles.
+#### 领域服务 (Domain Service)
 
-## 10. Quality Gates
+领域服务用于处理跨实体的业务逻辑。
 
-### 10.1 CI/CD Pipeline
+```python
+class StabilityJudge:
+    """稳定性判断服务"""
+    
+    def __init__(self, policy: StabilityPolicy):
+        self._policy = policy
+        self._history = {}
+    
+    def evaluate(self, frame: DetectionFrame) -> StabilityReport:
+        """评估检测帧的稳定性"""
+        # 业务逻辑实现
+```
 
-The project uses GitHub Actions for continuous integration:
+### 分层规则
 
-- **ruff**: Linting
-- **black**: Code formatting
-- **mypy**: Type checking
-- **pytest**: Unit and integration tests
-- **architecture**: Import boundary validation
+#### 依赖规则
 
-### 10.2 Test Coverage Requirements
+```
+API Layer → Application Layer → Domain Layer ← Infrastructure Layer
+                     ↑                    ↑
+                     └──── 依赖倒置 ──────┘
+```
 
-- All domain atoms must have unit tests
-- Each module must have at least one smoke test
-- Tests must run in CI before merge
+- **上层依赖下层**: 应用层依赖领域层
+- **基础设施层依赖下层**: 基础设施层实现领域层定义的接口
+- **领域层不依赖任何其他层**: 这是核心原则
 
-## 11. Environment Variables
+#### 导入规则
 
-| Variable | Description | Required For |
-|----------|-------------|--------------|
-| `VLM_API_KEY` | API key for VLM models | Qwen-VL autolabeling |
-| `CUDA_VISIBLE_DEVICES` | GPU device selection | Training with GPU |
+```
+Domain Layer:
+  ✓ from shared_kernel.domain...
+  ✓ from .value_object...
+  ✓ from .entity...
+  ✗ from application...
+  ✗ from infrastructure...
+  ✗ from autolabel_context... (其他上下文)
+```
 
-## 12. Versioning and Changelog
+## 上下文划分
 
-- Semantic versioning: MAJOR.MINOR.PATCH
-- Changelog maintained in CHANGELOG.md
-- Git tags for releases
+### Context 1: AutoLabel Context
 
-## 13. Contributing
+**职责**: 自动标注图片
 
-1. Follow the architecture layering rules
-2. Add tests for new functionality
-3. Run linting and type checking before submitting
-4. Update documentation as needed
-5. Create ADR for architectural decisions
+#### 领域模型
 
-## 14. References
+```
+AutoLabelJob (聚合根)
+├── ImageItem (实体)
+├── LabelResult (实体)
+└── JobStatistics (值对象)
+```
 
-- [Architecture Decision Records](adr/)
-- [Workflow Definitions](workflows/)
-- [Migration Map](migration_map.md)
+#### 基础设施
+
+- `YoloEngine`: YOLO 检测引擎
+- `FasterRcnnEngine`: Faster R-CNN 检测引擎
+- `VlmEngine`: VLM 标注引擎
+- `FileLabelStore`: 文件标签存储
+
+#### 应用服务
+
+- `RunAutolabelHandler`: 处理自动标注命令
+- `LabelAssembler`: DTO 与领域对象转换
+
+### Context 2: Train Context
+
+**职责**: 训练分类模型
+
+#### 领域模型
+
+```
+TrainingRun (聚合根)
+├── Dataset (实体)
+├── ModelSpec (实体)
+└── TrainingMetrics (值对象)
+```
+
+#### 基础设施
+
+- `YoloTrainer`: YOLO 训练器
+- `FasterRcnnTrainer`: Faster R-CNN 训练器
+- `LabelConverter`: 标签格式转换
+- `LocalArtifactStore`: 模型文件存储
+
+#### 应用服务
+
+- `StartTrainingHandler`: 处理训练命令
+- `TrainingAssembler`: DTO 与领域对象转换
+
+### Context 3: Deploy Context
+
+**职责**: 部署推理和分拣控制
+
+#### 领域模型
+
+```
+SortingSession (聚合根)
+├── DetectionFrame (实体)
+├── Counter (实体)
+└── SessionStatistics (值对象)
+```
+
+#### 基础设施
+
+- `YoloRuntime`: YOLO 推理运行时
+- `RknnRuntime`: RK3588 NPU 推理运行时
+- `CameraOpencv`: OpenCV 相机接口
+- `SerialPyserial`: 串口通信
+
+#### 应用服务
+
+- `SessionHandler`: 处理会话命令
+- `PacketAssembler`: DTO 与领域对象转换
+
+### Shared Kernel
+
+**职责**: 跨上下文的共享代码
+
+#### 领域模型
+
+```
+WasteCategory (枚举)
+BoundingBox (值对象)
+Confidence (值对象)
+LabelFile (值对象)
+ClassMapping (值对象)
+ProtocolMapping (值对象)
+```
+
+#### 基础设施
+
+- `ConfigLoader`: 配置加载器
+- `LoggingSetup`: 日志配置
+
+## 模块详解
+
+### 领域层结构
+
+```
+domain/
+├── model/
+│   ├── aggregate/         # 聚合根
+│   ├── entity/           # 实体
+│   └── value_object/     # 值对象
+├── service/              # 领域服务
+├── repository/           # 仓储接口
+└── event/                # 领域事件
+```
+
+### 应用层结构
+
+```
+application/
+├── command/              # 命令
+├── dto/                  # 数据传输对象
+├── handler/              # 命令处理器
+└── assembler/            # DTO 转换器
+```
+
+### 基础设施层结构
+
+```
+infrastructure/
+├── engine/               # 检测引擎
+├── trainer/              # 训练器
+├── runtime/              # 推理运行时
+├── persistence/          # 持久化
+├── device/               # 设备通信
+└── callbacks/            # 训练回调
+```
+
+## 基础设施
+
+### 持久化
+
+使用仓储模式隔离领域层和持久化层：
+
+```python
+# 领域层定义接口
+class ILabelStore(IRepository):
+    def save(self, label_file: LabelFile): ...
+    def load(self, file_id: str) -> LabelFile: ...
+
+# 基础设施层实现
+class FileLabelStore(ILabelStore):
+    def save(self, label_file: LabelFile):
+        with open(f"labels/{label_file.file_id}.json", "w") as f:
+            json.dump(label_file.to_dict(), f)
+```
+
+### 配置管理
+
+使用 ConfigLoader 统一管理配置：
+
+```python
+from shared_kernel.config.loader import ConfigLoader
+
+config = ConfigLoader()
+config.load("config/logging.yaml")
+config.load("config/models/yolo.yaml")
+
+model_config = config.get("yolo")
+```
+
+### 日志配置
+
+使用 YAML 配置日志：
+
+```yaml
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: standard
+
+loggers:
+  shared_kernel:
+    level: INFO
+    handlers: [console]
+```
+
+## 配置管理
+
+### 配置文件结构
+
+```
+config/
+├── logging.yaml          # 日志配置
+├── taxonomy/
+│   └── waste_categories.yaml  # 垃圾分类定义
+├── models/
+│   ├── yolo.yaml         # YOLO 模型配置
+│   ├── faster_rcnn.yaml  # Faster R-CNN 模型配置
+│   └── vlm_qwen.yaml     # VLM 模型配置
+├── mappings/
+│   ├── train_class_map.yaml    # 训练类别映射
+│   └── deploy_class_map.yaml   # 部署类别映射
+├── profiles/
+│   └── device_rk3588.yaml      # RK3588 设备配置
+└── prompts/
+    └── vlm_prompts.yaml        # VLM 提示词
+```
+
+### 配置加载顺序
+
+1. 默认配置 (`config/`)
+2. 环境变量覆盖
+3. 命令行参数
+
+## 部署架构
+
+### 单机部署
+
+```
+┌─────────────────────────────────────────────────────┐
+│                     Host Machine                     │
+│                                                      │
+│  ┌───────────────────────────────────────────────┐  │
+│  │              Docker Container                  │  │
+│  │                                               │  │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐       │  │
+│  │  │Autolabel│  │  Train   │  │  Deploy │       │  │
+│  │  └─────────┘  └─────────┘  └─────────┘       │  │
+│  │                                               │  │
+│  │  ┌─────────────────────────────────────────┐  │  │
+│  │  │              Shared Kernel               │  │  │
+│  │  └─────────────────────────────────────────┘  │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                      │
+│  ┌───────────────────────────────────────────────┐  │
+│  │              Volume Mounts                     │  │
+│  │  - models/                                    │  │
+│  │  - datasets/                                  │  │
+│  │  - config/                                    │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+```
+
+### 分布式部署
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Cloud Server                              │
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
+│  │ Autolabel   │  │   Train     │  │      Deploy             │  │
+│  │  Service    │──▶│  Service    │──▶│  Service               │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+│         │               │                    │                   │
+│         └───────────────┴────────────────────┘                   │
+│                           │                                      │
+│                    ┌──────▼──────┐                               │
+│                    │   MinIO /   │                               │
+│                    │  S3 Bucket  │                               │
+│                    └─────────────┘                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 硬件平台支持
+
+#### RK3588 NPU
+
+```yaml
+device:
+  type: npu
+  model: rk3588
+  npu_id: 0
+  
+inference:
+  backend: rknn
+  num_threads: 4
+  
+serial:
+  port: /dev/ttyUSB0
+  baudrate: 115200
+```
+
+#### Jetson (GPU)
+
+```yaml
+device:
+  type: gpu
+  model: jetson_orin
+  cuda_id: 0
+  
+inference:
+  backend: tensorrt
+  precision: fp16
+```
+
+#### x86 CPU
+
+```yaml
+device:
+  type: cpu
+  
+inference:
+  backend: onnxruntime
+  num_threads: 8
+```
+
+## 演进路线
+
+### 短期目标
+
+- [ ] 完成所有模块的单元测试
+- [ ] 添加集成测试
+- [ ] 优化推理性能
+- [ ] 支持更多硬件平台
+
+### 中期目标
+
+- [ ] 添加 Web 管理界面
+- [ ] 支持模型版本管理
+- [ ] 添加监控和告警
+- [ ] 支持分布式训练
+
+### 长期目标
+
+- [ ] 支持边缘设备增量学习
+- [ ] 添加联邦学习支持
+- [ ] 支持多语言界面
+- [ ] 云边协同部署

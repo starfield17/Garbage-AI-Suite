@@ -1,40 +1,21 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "garbage-deploy"
-version = "0.1.0"
-description = "Deployment module for Garbage-AI-Suite"
-readme = "README.md"
+name = "deploy-context"
+version = "2.0.0"
+description = "Deploy Context - AI-based garbage classification deployment system"
 requires-python = ">=3.10"
-license = {text = "MIT"}
-authors = [
-    {name = "Garbage-AI-Suite Team"}
-]
+
 dependencies = [
-    "garbage-shared",
+    "shared-kernel",
+    "ultralytics>=8.0",
     "opencv-python>=4.8",
     "pyserial>=3.5",
-    "pyyaml>=6.0",
 ]
 
 [project.scripts]
-garbage-deploy = "garbage_deploy.entry.__main__:main"
+deploy = "deploy_context.api.cli.main:main"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov",
-    "mypy",
-    "ruff",
-]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["garbage_deploy*"]
-
-[tool.architect]
-source_dirs = ["src/garbage_shared"]
-root_dirs = ["src/garbage_train", "src/garbage_deploy", "src/garbage_autolabel"]
-ignore_patterns = ["tests/*", "**/test_*.py"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

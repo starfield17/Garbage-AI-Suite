@@ -1,0 +1,36 @@
+# config/mappings/train_class_map.yaml
+# 训练类别编号映射配置
+
+# 默认映射（四分类）
+default:
+  0: "Kitchen_waste"
+  1: "Recyclable_waste"
+  2: "Hazardous_waste"
+  3: "Other_waste"
+
+# YOLO v12 专用映射
+yolo_v12:
+  0: "Kitchen_waste"
+  1: "Recyclable_waste"
+  2: "Hazardous_waste"
+  3: "Other_waste"
+
+# Faster R-CNN 映射（与 COCO 兼容）
+faster_rcnn:
+  1: "Kitchen_waste"      # COCO 从 1 开始
+  2: "Recyclable_waste"
+  3: "Hazardous_waste"
+  4: "Other_waste"
+
+# 十分类扩展（示例）
+ten_class:
+  0: "food_waste"
+  1: "paper"
+  2: "plastic"
+  3: "glass"
+  4: "metal"
+  5: "textile"
+  6: "battery"
+  7: "medicine"
+  8: "electronic"
+  9: "other"

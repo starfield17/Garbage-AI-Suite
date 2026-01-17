@@ -1,0 +1,31 @@
+# config/mappings/deploy_class_map.yaml
+# 部署编号映射配置（分类 ID -> 串口协议字节）
+
+# 默认映射
+default:
+  0: 1   # Kitchen_waste -> 0x01
+  1: 2   # Recyclable_waste -> 0x02
+  2: 3   # Hazardous_waste -> 0x03
+  3: 4   # Other_waste -> 0x04
+
+# STM32 协议
+stm32:
+  0: 1
+  1: 2
+  2: 3
+  3: 4
+
+# Arduino 协议（使用不同编号）
+arduino:
+  0: 10
+  1: 20
+  2: 30
+  3: 40
+
+# 特殊协议：0 表示无效/空检测
+special:
+  0: 1
+  1: 2
+  2: 3
+  3: 4
+  empty: 0  # 无检测时发送 0

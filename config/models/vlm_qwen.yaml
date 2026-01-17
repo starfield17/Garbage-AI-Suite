@@ -1,0 +1,21 @@
+# config/models/vlm_qwen.yaml
+# Qwen VLM 模型配置
+
+# API 配置
+base_url: "https://api.siliconflow.cn/v1"
+model_id: "Qwen/Qwen2.5-VL-72B-Instruct"
+
+# 推理配置
+confidence_threshold: 0.5
+max_retries: 3
+timeout: 30  # 秒
+rate_limit:
+  requests_per_minute: 60
+  tokens_per_minute: 100000
+
+# Prompt 配置
+prompt_template: "autolabel_default"  # 对应 prompts/vlm/ 下的模板文件
+
+# 输出配置
+output_format: "json"  # json 或 natural
+strict_json: false
